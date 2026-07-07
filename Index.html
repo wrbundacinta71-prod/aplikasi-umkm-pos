@@ -1,206 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <base target="_top">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { padding-top: 20px; background-color: #f8f9fa; }
-    .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    @media print { .no-print { display: none; } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Kasir</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
-  <div class="container pb-5">
-    <h2 class="text-center mb-4 text-primary">Aplikasi UMKM Kasir & Utang</h2>
-    
-    <div class="card no-print">
-      <div class="card-header bg-primary text-white"><h5>Pencatatan Transaksi Baru</h5></div>
-      <div class="card-body">
-        <form id="formTransaksi" onsubmit="event.preventDefault(); submitTransaksi();">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Tanggal</label>
-              <input type="date" id="tanggal" class="form-control" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Metode Transaksi</label>
-              <select id="metode" class="form-select" onchange="toggleMetode()">
-                <option value="Tunai">Tunai</option>
-                <option value="Utang">Utang / Bon</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Grup Pelanggan</label>
-              <select id="grup" class="form-select" onchange="filterPelanggan()" required>
-                <option value="">-- Pilih Grup --</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Nama Pelanggan</label>
-              <select id="pelanggan" class="form-select" onchange="muatRiwayat()" required>
-                <option value="">-- Pilih Pelanggan --</option>
-              </select>
-            </div>
-            <div class="col-md-12">
-              <label class="form-label">Pilih Barang</label>
-              <select id="barang" class="form-select" onchange="pilihBarang()">
-                <option value="">-- Pilih Barang (Opsional) --</option>
-              </select>
-            </div>
-            <div class="col-md-12">
-              <label class="form-label">Nama/Detail Transaksi</label>
-              <input type="text" id="namaTransaksi" class="form-control" placeholder="Contoh: Pembelian Sembako" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Jumlah Utang (Rp)</label>
-              <input type="number" id="utang" class="form-control" value="0" min="0">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Jumlah Bayar (Rp)</label>
-              <input type="number" id="bayar" class="form-control" value="0" min="0">
-            </div>
-          </div>
-          <button type="submit" class="btn btn-success w-100 mt-4">Simpan Transaksi</button>
-        </form>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Riwayat & Saldo Utang</h5>
-        <button class="btn btn-sm btn-light no-print" onclick="window.print()">Cetak / Bukti Bayar</button>
-      </div>
-      <div class="card-body">
-        <div class="alert alert-info d-flex justify-content-between">
-          <strong>Total Saldo Utang Pelanggan:</strong>
-          <span id="saldoUtangText" class="fw-bold">Rp 0</span>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-bordered table-striped">
-            <thead class="table-secondary">
-              <tr>
-                <th>Tanggal</th>
-                <th>Detail Transaksi</th>
-                <th>Utang (+)</th>
-                <th>Bayar (-)</th>
-              </tr>
-            </thead>
-            <tbody id="tabelRiwayat">
-              <tr><td colspan="4" class="text-center text-muted">Pilih pelanggan untuk melihat riwayat</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
+    <iframe src="https://script.google.com/macros/s/AKfycbwt1Vx6PEK_Em-mwLXvzQgAiwNhtgGGajU6cT5bBaVGPMF1IH2B-arkYoxCp4fY71s7/exec"></iframe>
 
-  <script>
-    let masterData = {};
-
-    window.onload = function() {
-      document.getElementById('tanggal').valueAsDate = new Date();
-      google.script.run.withSuccessHandler(initAplikasi).getMasterData();
-    };
-
-    function initAplikasi(data) {
-      masterData = data;
-      const grupSet = new Set(data.pelanggan.map(p => p.grup));
-      const selectGrup = document.getElementById('grup');
-      grupSet.forEach(grup => {
-        let opt = document.createElement('option');
-        opt.value = opt.text = grup;
-        selectGrup.add(opt);
-      });
-
-      const selectBarang = document.getElementById('barang');
-      data.produk.forEach(p => {
-        let opt = document.createElement('option');
-        opt.value = JSON.stringify(p);
-        opt.text = `${p.nama} (Tunai: ${p.tunai} | Utang: ${p.utang})`;
-        selectBarang.add(opt);
-      });
-    }
-
-    function filterPelanggan() {
-      const grupSelected = document.getElementById('grup').value;
-      const selectPelanggan = document.getElementById('pelanggan');
-      selectPelanggan.innerHTML = '<option value="">-- Pilih Pelanggan --</option>';
-      
-      masterData.pelanggan.filter(p => p.grup === grupSelected).forEach(p => {
-        let opt = document.createElement('option');
-        opt.value = opt.text = p.nama;
-        selectPelanggan.add(opt);
-      });
-    }
-
-    function toggleMetode() {
-      pilihBarang();
-    }
-
-    function pilihBarang() {
-      const barangVal = document.getElementById('barang').value;
-      if(!barangVal) return;
-      
-      const barang = JSON.parse(barangVal);
-      const metode = document.getElementById('metode').value;
-      
-      document.getElementById('namaTransaksi').value = "Beli " + barang.nama;
-      
-      if(metode === "Tunai") {
-        document.getElementById('utang').value = 0;
-        document.getElementById('bayar').value = barang.tunai;
-      } else {
-        document.getElementById('utang').value = barang.utang;
-        document.getElementById('bayar').value = 0;
-      }
-    }
-
-    function muatRiwayat() {
-      const grup = document.getElementById('grup').value;
-      const nama = document.getElementById('pelanggan').value;
-      if(!grup || !nama) return;
-
-      google.script.run.withSuccessHandler(function(res) {
-        document.getElementById('saldoUtangText').innerText = "Rp " + res.saldoUtang.toLocaleString('id-ID');
-        const tbody = document.getElementById('tabelRiwayat');
-        tbody.innerHTML = "";
-        
-        if(res.riwayat.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" class="text-center">Belum ada riwayat transaksi</td></tr>';
-          return;
-        }
-
-        res.riwayat.forEach(r => {
-          let row = `<tr>
-            <td>${r.tanggal}</td>
-            <td>${r.transaksi} <br><small class="text-muted">${r.id}</small></td>
-            <td class="text-danger">Rp ${r.utang.toLocaleString('id-ID')}</td>
-            <td class="text-success">Rp ${r.bayar.toLocaleString('id-ID')}</td>
-          </tr>`;
-          tbody.innerHTML += row;
-        });
-      }).getRiwayat(grup, nama);
-    }
-
-    function submitTransaksi() {
-      const data = {
-        tanggal: document.getElementById('tanggal').value,
-        metode: document.getElementById('metode').value,
-        grup: document.getElementById('grup').value,
-        pelanggan: document.getElementById('pelanggan').value,
-        namaTransaksi: document.getElementById('namaTransaksi').value,
-        utang: document.getElementById('utang').value,
-        bayar: document.getElementById('bayar').value
-      };
-
-      google.script.run.withSuccessHandler(function(trxId) {
-        alert("Transaksi Berhasil Disimpan!\nID: " + trxId);
-        document.getElementById('namaTransaksi').value = "";
-        document.getElementById('utang').value = 0;
-        document.getElementById('bayar').value = 0;
-        muatRiwayat();
-      }).simpanTransaksi(data);
-    }
-  </script>
 </body>
 </html>
