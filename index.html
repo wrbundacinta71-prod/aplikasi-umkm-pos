@@ -13,6 +13,7 @@
     .nota-box { border: 2px dashed #333; padding: 20px; background: #fff; font-family: 'Courier New', Courier, monospace; border-radius: 5px; }
     .table-riwayat { font-size: 0.85rem; }
     
+    /* Layout Cetak Rekap Sesuai Gambar Lampiran Dokumen */
     .cetak-dokumen-rekap { font-family: Arial, sans-serif; color: #000; background: #fff; padding: 10px; }
     .table-dokumen { width: 100%; border-collapse: collapse; margin-top: 10px; }
     .table-dokumen th { background-color: #a3e4d7 !important; border: 1px solid #000; text-align: center; padding: 5px; font-size: 0.9rem; }
@@ -29,7 +30,7 @@
 <body>
 
 <div class="container-fluid">
-  <h2 class="mb-4 text-center text-primary fw-bold d-print-none">Sistem Manajemen Warung Bunda Cinta</h2>
+  <h2 class="mb-4 text-center text-primary fw-bold d-print-none">Aplikasi Kasir Warung Bunda Cinta</h2>
   
   <div class="row d-print-none">
     <div class="col-lg-6">
@@ -70,7 +71,7 @@
               <option value="Bayar Utang">Bayar Utang</option>
             </select>
 
-            <label class="small text-muted fw-semibold">Keterangan</label>
+            <label class="small text-muted fw-semibold">Catatan Belanja</label>
             <textarea id="txtKeterangan" class="form-control form-control-sm" rows="3" placeholder="Tulis atau edit keterangan nota di sini..."></textarea>
           </div>
 
@@ -96,7 +97,7 @@
 
     <div class="col-lg-6">
       <div id="panelUtang" class="card card-body d-none">
-        <h5 class="card-title text-danger fw-bold mb-3">Rekap Riwayat Utang</h5>
+        <h5 class="card-title text-danger fw-bold mb-3">Riwayat Utang</h5>
         <hr>
         <div class="row g-2 mb-3">
           <div class="col-md-5">
@@ -113,7 +114,7 @@
         </div>
 
         <div class="mb-3 p-2 bg-light rounded border border-danger-subtle">
-          <label class="small fw-bold text-danger">Pilih Rekening Bank Tampilan Nota:</label>
+          <label class="small fw-bold text-danger">Pilih Bank:</label>
           <select id="selBankNota" class="form-select form-select-sm"></select>
         </div>
         
@@ -130,7 +131,7 @@
             <tbody id="tabelRiwayatBody"></tbody>
           </table>
         </div>
-        <button id="btnCetakRiwayat" class="btn btn-sm btn-outline-danger w-100 fw-bold" onclick="cetakLaporanRiwayatFormatGambar()">Cetak Laporan Piutang Sesuai Gambar Lampiran</button>
+        <button id="btnCetakRiwayat" class="btn btn-sm btn-outline-danger w-100 fw-bold" onclick="cetakLaporanRiwayatFormatGambar()">Cetak Rincian Utang Per Tanggal</button>
       </div>
 
       <div id="panelNota" class="card card-body">
@@ -161,7 +162,7 @@
           <button class="btn btn-sm btn-success w-100 mt-4 fw-bold" onclick="cetakNotaSaja()">Cetak Struk Pembayaran Ini</button>
         </div>
         <div id="notaKosongMsg" class="text-center py-4 text-muted bg-light rounded border">
-          Nota pembayaran yang sah terbit jika ada uang fisik tunai yang diterima (Skema Tunai / Bayar Sebagian / Murni Cicil).
+          Nota pembayaran yang sah terbit jika ada uang fisik tunai yang diterima.
         </div>
       </div>
     </div>
@@ -202,7 +203,6 @@
       }).catch(err => alert("Gagal terkoneksi ke database API."));
   });
 
-  // Listener Real-time Kalkulator Campuran: Mengurangi Utang secara dinamis saat Kolom Bayar diketik
   $(document).on('input', '#numBayar', function() {
     let skema = $('#selJenisHarga').val();
     if(skema === 'Utang') {
@@ -271,7 +271,7 @@
             tbody.append(`
               <tr>
                 <td>${item.tanggal}</td>
-                <td><small class="text-secondary fw-bold">[${item.nota}]</small><br>${item.keterangan}</td>
+                <td><small class="text-primary fw-bold">[${item.nota}]</small><br>${item.keterangan}</td>
                 <td class="text-danger">Rp ${parseInt(item.utang).toLocaleString('id-ID')}</td>
                 <td class="text-success">Rp ${parseInt(item.bayar).toLocaleString('id-ID')}</td>
               </tr>
@@ -294,7 +294,7 @@
       let brg = masterData.barang.find(b => b.id == id);
       let qty = currentQty[id] || 1;
       wrapper.append(`
-        <div class="row g-2 mb-2 align-items-center bg-white p-1 rounded border">
+        <div class="row g-2 mb-2 align-items-center bg-white p-1 rounded border shadow-sm">
           <div class="col-7"><span class="small fw-semibold">${brg.nama}</span></div>
           <div class="col-5">
             <div class="input-group input-group-sm">
@@ -334,10 +334,9 @@
     
     if(skema === 'Utang') {
       $('#numUtang').val(totalBelanja); 
-      $('#numBayar').val(0); // Default DP 0, kasir bisa edit manual jika bayar sebagian
+      $('#numBayar').val(0); 
       $('#panelUtang').removeClass('d-none');
     } else {
-      // Skema Tunai Murni
       $('#numUtang').val(0); 
       $('#numBayar').val(totalBelanja);
       $('#panelUtang').addClass('d-none');
@@ -357,36 +356,52 @@
       keterangan: $('#txtKeterangan').val().trim(),
       jenisHarga: skema,
       total: totalBelanja,
-      utang: 0, // Dihitung di bawah dengan rumus akuntansi tepat
-      bayar: 0  // Dihitung di bawah dengan rumus akuntansi tepat
+      utang: 0,
+      bayar: 0,
+      arrBarangDetail: [] // Payload baru berbentuk array objek terurai
     };
 
-    // LOGIKA PERBAIKAN RUMUS TOTAL UTANG (AKUNTANSI YANG BENAR)
+    // Bangun data rincian barang untuk sheet detail
+    if (skema !== 'Bayar Utang') {
+      $('.qty-input').each(function() {
+        let id = $(this).data('id');
+        let qty = parseInt($(this).val()) || 0;
+        let brg = masterData.barang.find(b => b.id == id);
+        let harga = skema === 'Tunai' ? brg.tunai : brg.utang;
+        payload.arrBarangDetail.push({
+          nama_barang: brg.nama,
+          banyak: qty,
+          satuan: brg.satuan,
+          harga_satuan: harga,
+          jumlah: qty * harga
+        });
+      });
+    }
+
     if (skema === 'Tunai') {
-      payload.utang = 0;
-      payload.bayar = 0; // Transaksi tunai hari ini beres di tempat, jangan kurangi/tambah piutang lama!
+      payload.utang = 0; payload.bayar = 0;
     } else if (skema === 'Utang') {
-      payload.utang = sisaBukuUtang; // Hanya memasukkan sisa bon bersih ke kolom Catat_Utang
-      payload.bayar = 0;             // Tidak memotong buku piutang masa lalu
+      payload.utang = sisaBukuUtang; payload.bayar = 0;
       if(uangTunaiMasuk > 0) {
         payload.keterangan += ` (Total Belanja Rp ${totalBelanja.toLocaleString('id-ID')}, Dibayar Tunai Rp ${uangTunaiMasuk.toLocaleString('id-ID')})`;
       }
     } else if (skema === 'Bayar Utang') {
-      payload.utang = 0;
-      payload.bayar = uangTunaiMasuk; // Murni mengurangi buku piutang masa lalu
+      payload.utang = 0; payload.bayar = uangTunaiMasuk;
     }
 
     if(!payload.grup || !payload.pelanggan || !payload.keterangan) {
       alert("Lengkapi entri Nama Pelanggan dan Keterangan!"); return;
     }
 
+    let btnSimpan = $('button[onclick="prosesSimpan()"]');
+    btnSimpan.prop('disabled', true).text('Sedang Memproses... Mohon Tunggu...');
+
     fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
       .then(res => res.json())
       .then(res => {
         if(res.status === "success") {
-          alert("Transaksi Terrekam Sempurna!");
+          alert("Transaksi berhasil disimpan!");
           
-          // KETENTUAN ALIRAN CETAK STRUK NOTA SAH (Hanya jika ada uang masuk nyata ke warung)
           if(skema === 'Tunai' || skema === 'Bayar Utang' || (skema === 'Utang' && uangTunaiMasuk > 0)) {
             $('#notaNo').text(res.noNota);
             $('#notaTglCetak').text(new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}));
@@ -395,14 +410,12 @@
             $('#notaTotal').text(totalBelanja.toLocaleString('id-ID'));
             $('#notaUtang').text(payload.utang.toLocaleString('id-ID'));
             
-            // Total Uang masuk riil ke kas laci warung Anda
             let uangLaciUmat = skema === 'Tunai' ? totalBelanja : uangTunaiMasuk;
             $('#notaBayar').text(uangLaciUmat.toLocaleString('id-ID'));
             
             $('#areaNota').removeClass('d-none');
             $('#notaKosongMsg').addClass('d-none');
           } else {
-            // Utang murni tanpa DP tidak menerbitkan struk pembayaran cash sah
             $('#areaNota').addClass('d-none');
             $('#notaKosongMsg').removeClass('d-none');
           }
@@ -411,6 +424,10 @@
           $('#numBayar').val(0);
           muatRiwayatDanSaldo();
         }
+      })
+      .catch(err => alert("Koneksi terputus/sinyal jelek! Data gagal terkirim. Coba lagi."))
+      .finally(() => {
+        btnSimpan.prop('disabled', false).text('Simpan Transaksi');
       });
   }
 
@@ -433,28 +450,32 @@
     let totalAkumulasiTransaksi = 0;
     let index = 1;
 
-    riwayatLengkapDiterima.forEach(item => {
-      if(item.utang > 0) {
-        totalAkumulasiTransaksi += item.utang;
-        rowsHtml += `
-          <tr>
-            <td style="text-align:center;">${index++}</td>
-            <td style="text-align:center;">${item.tanggal}</td>
-            <td>${item.keterangan}</td>
-            <td style="text-align:center;">1</td>
-            <td style="text-align:center;">Paket</td>
-            <td style="text-align:right;">Rp ${parseInt(item.utang).toLocaleString('id-ID')}</td>
-            <td style="text-align:right;">Rp ${parseInt(item.utang).toLocaleString('id-ID')}</td>
-          </tr>
-        `;
+    // LOOP BARU: Menarik rincian barang asli dari sheet Detail_Transaksi yang dikirim Backend
+    riwayatLengkapDiterima.forEach(nota => {
+      if(nota.utang > 0 && nota.rincian_barang && nota.rincian_barang.length > 0) {
+        nota.rincian_barang.forEach(item => {
+          totalAkumulasiTransaksi += item.jumlah;
+          rowsHtml += `
+            <tr>
+              <td style="text-align:center;">${index++}</td>
+              <td style="text-align:center;">${nota.tanggal}</td>
+              <td>${item.nama_barang}</td>
+              <td style="text-align:center;">${item.banyak}</td>
+              <td style="text-align:center;">${item.satuan}</td>
+              <td style="text-align:right;">Rp ${parseInt(item.harga_satuan).toLocaleString('id-ID')}</td>
+              <td style="text-align:right;">Rp ${parseInt(item.jumlah).toLocaleString('id-ID')}</td>
+            </tr>
+          `;
+        });
       }
     });
 
     let terbilangKata = angkaKeTerbilang(totalAkumulasiTransaksi) + " Rupiah";
 
+    // PERBAIKAN RE-RENDER QRIS IMAGE HTML
     let qrisKomponen = infoBank.urlQris 
-      ? `<img src="${infoBank.urlQris}" style="max-width:100px; max-height:100px; object-fit:contain; border:1px solid #ccc; padding:2px;">`
-      : `<span style="border:1px solid #000; padding:10px; display:inline-block; background:#fff; font-weight:bold;">QRIS</span>`;
+      ? `<img src="${infoBank.urlQris}" style="max-width:120px; max-height:120px; object-fit:contain; border:1px solid #ccc; padding:4px; background:#fff;">`
+      : `<span style="border:1px solid #000; padding:15px; display:inline-block; background:#fff; font-weight:bold;">[ QRIS BELUM DIATUR ]</span>`;
 
     let templateDokumen = `
       <div class="cetak-dokumen-rekap">
@@ -486,11 +507,11 @@
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml ? rowsHtml : '<tr><td colspan="7" style="text-align:center;">Tidak ada rincian data transaksi utang pada periode ini.</td></tr>'}
+            ${rowsHtml ? rowsHtml : '<tr><td colspan="7" style="text-align:center; padding:15px;">Tidak ada rincian data transaksi utang pada periode ini.</td></tr>'}
             <tr class="total-row">
               <td colspan="3" style="text-align:center;">TOTAL</td>
-              <td style="text-align:center;">${index - 1} Item</td>
-              <td colspan="2" style="text-align:right;">Total Transaksi</td>
+              <td style="text-align:center;" colspan="2">${index - 1} Item Rinci</td>
+              <td style="text-align:right;">Total Transaksi</td>
               <td style="text-align:right;">Rp ${totalAkumulasiTransaksi.toLocaleString('id-ID')}</td>
             </tr>
           </tbody>
@@ -498,24 +519,24 @@
 
         <table style="width:100%; margin-top:10px; font-size:0.85rem; border:1px solid #000; background-color:#f9f9f9;">
           <tr>
-            <td style="width:55%; padding:10px; vertical-align:top; border-right:1px solid #000;">
+            <td style="width:60%; padding:10px; vertical-align:top; border-right:1px solid #000;">
               <i>Terbilang :</i>
-              <b style="font-style:italic; display:block; margin-top:2px; margin-bottom:10px; color:#c0392b;">"${terbilangKata}"</b>
-              <div style="border-top:1px dashed #ccc; padding-top:5px; font-size:0.8rem;">
-                <b>Transfer Bank :</b><br>
-                Nama Bank: ${infoBank.namaBank}<br>
-                No. Rekening: <span style="font-family:monospace; font-weight:bold;">${infoBank.noRek}</span><br>
+              <b style="font-style:italic; display:block; margin-top:4px; margin-bottom:12px; color:#c0392b; font-size:0.9rem;">"${terbilangKata}"</b>
+              <div style="border-top:1px dashed #ccc; padding-top:6px; font-size:0.8rem; line-height:1.4;">
+                <b>Transfer Bank Pembayaran :</b><br>
+                Nama Bank: <span style="font-weight:bold;">${infoBank.namaBank}</span><br>
+                No. Rekening: <span style="font-family:monospace; font-weight:bold; letter-spacing:0.5px;">${infoBank.noRek}</span><br>
                 Atas Nama: <b>${infoBank.atasNama}</b>
               </div>
             </td>
-            <td style="width:45%; padding:10px; vertical-align:middle; text-align:center;">
-              <span style="font-size:0.75rem; font-weight:bold; display:block; margin-bottom:5px;">Pembayaran Dapat Melalui QRIS:</span>
+            <td style="width:40%; padding:10px; vertical-align:middle; text-align:center;">
+              <span style="font-size:0.75rem; font-weight:bold; display:block; margin-bottom:6px;">Scan & Bayar Melalui QRIS Resmi:</span>
               ${qrisKomponen}
             </td>
           </tr>
         </table>
 
-        <table style="width:100%; margin-top:40px; text-align:center; font-size:0.9rem;">
+        <table style="width:100%; margin-top:45px; text-align:center; font-size:0.9rem;">
           <tr>
             <td style="width:50%;">Tanda Terima<br><br><br><br>(................................................)</td>
             <td style="width:50%;">Hormat Kami,<br><br><br><br>(................................................)<br><b>Warung Bunda Cinta</b></td>
@@ -536,7 +557,7 @@
     else if (n < 200) return "Seratus " + angkaKeTerbilang(n - 100);
     else if (n < 1000) return angkaKeTerbilang(Math.floor(n / 100)) + " Ratus " + angkaKeTerbilang(n % 100);
     else if (n < 2000) return "Seribu " + angkaKeTerbilang(n - 1000);
-    else if (n < 1000000) return angkaKeTerbilang(Math.floor(n / 1000)) + " Ribu " + extinction(n % 1000);
+    else if (n < 1000000) return angkaKeTerbilang(Math.floor(n / 1000)) + " Ribu " + angkaKeTerbilang(n % 1000);
     else if (n < 1000000000) return angkaKeTerbilang(Math.floor(n / 1000000)) + " Juta " + angkaKeTerbilang(n % 1000000);
     return "";
   }
