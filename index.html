@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Kasir & Utang UMKM</title>
+  <title>Aplikasi Kasir Warung Bunda Cinta</title>
   <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Select2 CSS -->
@@ -15,7 +15,13 @@
     .card { margin-bottom: 20px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 10px; }
     .nota-box { border: 2px dashed #333; padding: 20px; background: #fff; font-family: 'Courier New', Courier, monospace; border-radius: 5px; }
     .table-riwayat { font-size: 0.85rem; }
-    .badge-saldo { font-size: 1rem; padding: 8px 12px; }
+    
+    /* Layout Dokumen Cetak Rekap Sesuai Format Lampiran Gambar */
+    .cetak-dokumen-rekap { font-family: Arial, sans-serif; color: #000; background: #fff; padding: 10px; }
+    .table-dokumen { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .table-dokumen th { background-color: #a3e4d7 !important; border: 1px solid #000; text-align: center; padding: 5px; font-size: 0.9rem; }
+    .table-dokumen td { border: 1px solid #000; padding: 5px; font-size: 0.85rem; }
+    .table-dokumen .total-row { background-color: #a3e4d7 !important; font-weight: bold; }
     
     @media print {
       body * { visibility: hidden; }
@@ -33,21 +39,12 @@
     <!-- SEKSI KIRI: FORM ENTRI TRANSAKSI -->
     <div class="col-lg-6">
       <div class="card card-body">
-        <h5 class="card-title text-success fw-bold mb-3">Input Transaksi & Pembayaran</h5>
+        <h5 class="card-title text-success fw-bold mb-3">Input Transaksi</h5>
         <hr>
         <form id="formTransaksi">
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Tanggal Transaksi</label>
-              <input type="date" id="txtTanggal" class="form-control" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Skema Harga</label>
-              <select id="selJenisHarga" class="form-select" onchange="handleSkemaHargaChange()">
-                <option value="Tunai">Tunai / Cash</option>
-                <option value="Utang">Utang / Bon</option>
-              </select>
-            </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tanggal Transaksi</label>
+            <input type="date" id="txtTanggal" class="form-control" required>
           </div>
 
           <div class="row mb-3">
@@ -59,21 +56,27 @@
               <label class="form-label fw-semibold">Nama Pelanggan</label>
               <select id="selPelanggan" class="form-select" onchange="muatRiwayatDanSaldo()"></select>
               <div class="mt-2">
-                <span class="badge bg-danger-subtle text-danger border border-danger-subtle badge-saldo">
-                  Total Utang: Rp <span id="lblSaldoUtang">0</span>
-                </span>
+                <small class="text-danger fw-bold">Total Utang Saat Ini: Rp <span id="lblSaldoUtang">0</span></small>
               </div>
             </div>
           </div>
 
           <div class="p-3 bg-light rounded mb-3 border">
-            <label class="form-label fw-bold text-secondary mb-2">Keranjang Belanja (Jika ada pembelian):</label>
+            <label class="form-label fw-bold text-secondary mb-2">1. Pilih Barang Berbelanja :</label>
             <div class="mb-2">
               <select id="selBarang" class="form-control" multiple="multiple" style="width: 100%"></select>
             </div>
             <div id="wrapperQty" class="my-3"></div>
-            <label class="small text-muted fw-semibold">Rangkuman Nota Keterangan (Otomatis)</label>
-            <textarea id="txtKeterangan" class="form-control form-control-sm" rows="2" readonly placeholder="Otomatis merangkum barang yang dipilih..."></textarea>
+            
+            <label class="form-label fw-bold text-secondary mt-2 mb-2">2. Pilih Skema Harga Transaksi :</label>
+            <select id="selJenisHarga" class="form-select mb-3 border-primary" onchange="kalkulasiUlangTotal()">
+              <option value="Tunai">Tunai / Cash</option>
+              <option value="Utang">Utang / Bon</option>
+              <option value="Bayar Utang">Murni Bayar Utang (Tanpa Belanja)</option>
+            </select>
+
+            <label class="small text-muted fw-semibold">Rangkuman Nota Keterangan (Bisa Diketik Manual)</label>
+            <textarea id="txtKeterangan" class="form-control form-control-sm" rows="3" placeholder="Tulis atau edit keterangan nota di sini..."></textarea>
           </div>
 
           <div class="row mb-3">
@@ -91,14 +94,14 @@
             </div>
           </div>
 
-          <button type="button" class="btn btn-primary w-100 fw-bold py-2" onclick="prosesSimpan()">Simpan Transaksi / Pembayaran</button>
+          <button type="button" class="btn btn-primary w-100 fw-bold py-2" onclick="prosesSimpan()">Simpan Transaksi</button>
         </form>
       </div>
     </div>
 
-    <!-- SEKSI KANAN: RIWAYAT FILTER TANGGAL & NOTA SAH -->
+    <!-- SEKSI KANAN: RIWAYAT DAN NOTA -->
     <div class="col-lg-6">
-      <!-- PANEL REKAP UTANG BERDASARKAN RENTANG TANGGAL -->
+      <!-- PANEL REKAP UTANG -->
       <div id="panelUtang" class="card card-body d-none">
         <h5 class="card-title text-danger fw-bold mb-3">Rekap Riwayat Utang & Filter Periode</h5>
         <hr>
@@ -115,8 +118,14 @@
             <button class="btn btn-sm btn-danger w-100" onclick="muatRiwayatDanSaldo()">Filter</button>
           </div>
         </div>
+
+        <!-- SELEKSI DROPDOWN 1 BANK DINAMIS -->
+        <div class="mb-3 p-2 bg-light rounded border border-danger-subtle">
+          <label class="small fw-bold text-danger">Pilih Rekening Bank Tampilan Nota:</label>
+          <select id="selBankNota" class="form-select form-select-sm"></select>
+        </div>
         
-        <div class="table-responsive mb-2" style="max-height: 250px; overflow-y: auto;">
+        <div class="table-responsive mb-2" style="max-height: 200px; overflow-y: auto;">
           <table class="table table-sm table-bordered table-striped table-riwayat m-0">
             <thead class="table-dark sticky-top">
               <tr>
@@ -126,16 +135,14 @@
                 <th>Bayar (-)</th>
               </tr>
             </thead>
-            <tbody id="tabelRiwayatBody">
-              <tr><td colspan="4" class="text-center text-muted py-2">Pilih pelanggan</td></tr>
-            </tbody>
+            <tbody id="tabelRiwayatBody"></tbody>
           </table>
         </div>
-        <button id="btnCetakRiwayat" class="btn btn-sm btn-outline-danger w-100 mb-2 d-none" onclick="cetakLaporanRiwayat()">Cetak Rekap Riwayat Sesuai Periode</button>
+        <button id="btnCetakRiwayat" class="btn btn-sm btn-outline-danger w-100 fw-bold" onclick="cetakLaporanRiwayatFormatGambar()">Cetak Laporan Piutang Sesuai Gambar Lampiran</button>
       </div>
 
-      <!-- PREVIEW NOTA PEMBAYARAN SAH -->
-      <div class="card card-body">
+      <!-- PANEL BUKTI PEMBAYARAN SAH -->
+      <div id="panelNota" class="card card-body">
         <h5 class="card-title text-info fw-bold mb-3">Bukti Pembayaran yang Sah</h5>
         <hr>
         <div id="areaNota" class="nota-box d-none">
@@ -151,8 +158,8 @@
           <div id="notaRincian" class="small my-2" style="white-space: pre-line;"></div>
           <hr style="border-top: 1px dashed #000;">
           <table class="w-100 small fw-bold">
-            <tr><td>TOTAL BELANJA</td><td class="text-end">Rp <span id="notaTotal"></span></td></tr>
-            <tr><td>NOMINAL UTANG</td><td class="text-end">Rp <span id="notaUtang"></span></td></tr>
+            <tr><td>TOTAL TRANSAKSI</td><td class="text-end">Rp <span id="notaTotal"></span></td></tr>
+            <tr><td>DICATAT UTANG</td><td class="text-end">Rp <span id="notaUtang"></span></td></tr>
             <tr><td class="text-success">TOTAL TERBAYAR SAH</td><td class="text-end text-success">Rp <span id="notaBayar"></span></td></tr>
           </table>
           <hr style="border-top: 1px dashed #000;">
@@ -160,10 +167,10 @@
             <div class="col-6">Tanda Terima<br><br><br>(........................)</div>
             <div class="col-6">Hormat Kami,<br><br><br>( Warung Bunda Cinta )</div>
           </div>
-          <button id="btnPrintStruk" class="btn btn-sm btn-success w-100 mt-4 fw-bold">Cetak Struk Pembayaran Sah</button>
+          <button class="btn btn-sm btn-success w-100 mt-4 fw-bold" onclick="cetakNotaSaja()">Cetak Struk Pembayaran Ini</button>
         </div>
         <div id="notaKosongMsg" class="text-center py-4 text-muted bg-light rounded border">
-          Nota pembayaran yang sah tidak tersedia / tidak dapat dicetak jika tidak ada transaksi pembayaran (Tunai atau Bayar Utang).
+          Pilih skema Tunai atau Bayar Utang untuk memunculkan pencetakan nota sah per transaksi.
         </div>
       </div>
     </div>
@@ -174,15 +181,17 @@
 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-  // PENTING: GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
+  // ===================================================
+  // PENTING: PASTE URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+  // ===================================================
   const API_URL = "https://script.google.com/macros/s/AKfycbwt1Vx6PEK_Em-mwLXvzQgAiwNhtgGGajU6cT5bBaVGPMF1IH2B-arkYoxCp4fY71s7/exec"; 
 
   let masterData = {};
+  let riwayatLengkapDiterima = [];
 
   $(document).ready(function() {
     document.getElementById('txtTanggal').value = new Date().toISOString().substring(0, 10);
     
-    // Set default filter rentang tanggal 1 bulan terakhir
     let hariIni = new Date();
     let satuBulanLalu = new Date();
     satuBulanLalu.setMonth(hariIni.getMonth() - 1);
@@ -194,7 +203,13 @@
       .then(response => {
         masterData = response;
         initForm();
-      }).catch(err => alert("Gagal memuat basis data master."));
+        
+        // Render Daftar Pilihan Bank ke Dropdown Nota secara Dinamis
+        let selBank = $('#selBankNota').empty();
+        masterData.pengaturan.forEach((bk, index) => {
+          selBank.append(`<option value="${index}">${bk.namaBank} - A/N ${bk.atasNama}</option>`);
+        });
+      }).catch(err => alert("Gagal terkoneksi ke database API."));
   });
 
   function initForm() {
@@ -208,19 +223,8 @@
       selBarang.append(`<option value="${b.id}">${b.nama} (T: ${b.tunai} | U: ${b.utang})</option>`);
     });
     
-    selBarang.select2({ placeholder: "Ketik kata kunci nama barang..." });
+    selBarang.select2({ placeholder: "Cari nama barang..." });
     selBarang.on('change', function() { hitungOtomatisasiBelanja(); });
-  }
-
-  function handleSkemaHargaChange() {
-    let hargaJenis = $('#selJenisHarga').val();
-    if (hargaJenis === 'Utang') {
-      $('#panelUtang').removeClass('d-none');
-    } else {
-      // Jika diganti tunai, panel riwayat tetap muncul jika nama pelanggan sudah dipilih
-      if ($('#selPelanggan').val()) $('#panelUtang').removeClass('d-none');
-    }
-    hitungOtomatisasiBelanja();
   }
 
   function filterPelanggan() {
@@ -230,14 +234,13 @@
     masterData.pelanggan.filter(p => p.grup === grup).forEach(p => {
       selPelanggan.append(`<option value="${p.nama}">${p.nama}</option>`);
     });
-    resetTabelRiwayat();
+    resetTabelView();
   }
 
-  function resetTabelRiwayat() {
+  function resetTabelView() {
     $('#tabelRiwayatBody').html('<tr><td colspan="4" class="text-center text-muted py-2">Pilih pelanggan</td></tr>');
     $('#lblSaldoUtang').text('0');
     $('#btnCetakRiwayat').addClass('d-none');
-    $('#panelUtang').addClass('d-none');
   }
 
   function muatRiwayatDanSaldo() {
@@ -245,19 +248,22 @@
     let nama = $('#selPelanggan').val();
     let tglMulai = $('#filterTglMulai').val();
     let tglAkhir = $('#filterTglAkhir').val();
+    let skema = $('#selJenisHarga').val();
     
-    if(!grup || !nama) return resetTabelRiwayat();
+    if(!grup || !nama) return resetTabelView();
     
-    $('#panelUtang').removeClass('d-none');
+    if(skema === 'Utang') { $('#panelUtang').removeClass('d-none'); } 
+    else { $('#panelUtang').addClass('d-none'); }
 
     fetch(`${API_URL}?action=getRiwayat&grup=${grup}&nama=${nama}&tglMulai=${tglMulai}&tglAkhir=${tglAkhir}`)
       .then(res => res.json())
       .then(res => {
+        riwayatLengkapDiterima = res.list;
         $('#lblSaldoUtang').text(res.saldoUtang.toLocaleString('id-ID'));
         let tbody = $('#tabelRiwayatBody').empty();
         
         if(res.list.length === 0) {
-          tbody.append('<tr><td colspan="4" class="text-center py-2 text-muted">Tidak ada transaksi di periode ini</td></tr>');
+          tbody.append('<tr><td colspan="4" class="text-center py-2 text-muted">Tidak ada riwayat</td></tr>');
           $('#btnCetakRiwayat').addClass('d-none');
         } else {
           res.list.forEach(item => {
@@ -270,12 +276,7 @@
               </tr>
             `);
           });
-          tbody.append(`
-            <tr class="table-warning fw-bold text-center">
-              <td colspan="2" class="text-end">SALDO UTANG BERJALAN:</td>
-              <td colspan="2" class="text-danger">Rp ${res.saldoUtang.toLocaleString('id-ID')}</td>
-            </tr>
-          `);
+          tbody.append(`<tr class="table-warning fw-bold text-center"><td colspan="2" class="text-end">SALDO:</td><td colspan="2" class="text-danger">Rp ${res.saldoUtang.toLocaleString('id-ID')}</td></tr>`);
           $('#btnCetakRiwayat').removeClass('d-none');
         }
       });
@@ -307,102 +308,83 @@
   }
 
   function kalkulasiUlangTotal() {
-    let jenisHarga = $('#selJenisHarga').val();
+    let skema = $('#selJenisHarga').val();
     let keteranganArr = [];
     let totalBelanja = 0;
+
+    if (skema === 'Bayar Utang') {
+      $('#selBarang').val(null).trigger('change');
+      $('#numTotal').val(0); $('#numUtang').val(0);
+      $('#txtKeterangan').val("Murni Bayar / Angsuran Utang");
+      return;
+    }
 
     $('.qty-input').each(function() {
       let id = $(this).data('id');
       let qty = parseInt($(this).val()) || 0;
       let brg = masterData.barang.find(b => b.id == id);
-      let harga = jenisHarga === 'Tunai' ? brg.tunai : brg.utang;
-      
+      let harga = skema === 'Tunai' ? brg.tunai : brg.utang;
       totalBelanja += (qty * harga);
-      keteranganArr.push(`- ${brg.nama} (${qty} ${brg.satuan})`);
+      keteranganArr.push(`${brg.nama} (${qty} ${brg.satuan})`);
     });
 
-    $('#txtKeterangan').val(keteranganArr.join('\n'));
+    $('#txtKeterangan').val(keteranganArr.join(', '));
     $('#numTotal').val(totalBelanja);
     
-    if(jenisHarga === 'Utang') {
-      $('#numUtang').val(totalBelanja); 
-      $('#numBayar').val(0); // Default utang tidak mencicil (0)
+    if(skema === 'Utang') {
+      $('#numUtang').val(totalBelanja); $('#numBayar').val(0);
+      $('#panelUtang').removeClass('d-none');
     } else {
-      $('#numUtang').val(0); 
-      $('#numBayar').val(0); // Tunai biasa, pembayaran langsung lunas setara belanja otomatis di sistem backend
+      $('#numUtang').val(0); $('#numBayar').val(totalBelanja);
+      $('#panelUtang').addClass('d-none');
     }
   }
 
   function prosesSimpan() {
-    let jenisHarga = $('#selJenisHarga').val();
+    let skema = $('#selJenisHarga').val();
     let totalBelanja = parseFloat($('#numTotal').val()) || 0;
-    let nominalBayarCicilan = parseFloat($('#numBayar').val()) || 0;
+    let nominalBayar = parseFloat($('#numBayar').val()) || 0;
 
     let payload = {
       tanggal: $('#txtTanggal').val(),
       grup: $('#selGrup').val(),
       pelanggan: $('#selPelanggan').val(),
       keterangan: $('#txtKeterangan').val().trim(),
-      jenisHarga: jenisHarga,
+      jenisHarga: skema,
       total: totalBelanja,
       utang: parseFloat($('#numUtang').val()) || 0,
-      bayar: nominalBayarCicilan
+      bayar: skema === 'Tunai' ? totalBelanja : nominalBayar
     };
 
-    if(!payload.grup || !payload.pelanggan) {
-      alert("Mohon tentukan Nama Pelanggan!"); return;
+    if(!payload.grup || !payload.pelanggan || !payload.keterangan) {
+      alert("Lengkapi entri Nama Pelanggan dan Keterangan!"); return;
     }
 
-    // Kasus murni cicil utang tanpa barang belanjaan
-    if(!payload.keterangan && nominalBayarCicilan > 0) {
-      payload.keterangan = "Murni Bayar / Angsuran Utang";
-      payload.jenisHarga = "Tunai";
-      payload.total = 0;
-      payload.utang = 0;
-    }
-
-    if(!payload.keterangan && nominalBayarCicilan === 0) {
-      alert("Keranjang belanja kosong atau nominal bayar kosong!"); return;
-    }
-
-    fetch(API_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    }).then(res => res.json())
+    fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+      .then(res => res.json())
       .then(res => {
         if(res.status === "success") {
           alert("Transaksi berhasil disimpan!");
           
-          // ATURAN VALIDASI CETAK NOTA SAH:
-          // Nota SAH HANYA boleh dicetak jika JenisHarga == Tunai, ATAU jika ada aliran uang cicilan utang (>0)
-          if(jenisHarga === 'Tunai' || nominalBayarCicilan > 0) {
+          if(skema === 'Tunai' || skema === 'Bayar Utang') {
             $('#notaNo').text(res.noNota);
             $('#notaTglCetak').text(new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}));
             $('#notaPelanggan').text(payload.pelanggan);
             $('#notaRincian').text(payload.keterangan);
             $('#notaTotal').text(totalBelanja.toLocaleString('id-ID'));
             $('#notaUtang').text(payload.utang.toLocaleString('id-ID'));
-            
-            let totalUangFisikSah = (jenisHarga === 'Tunai') ? (totalBelanja + nominalBayarCicilan) : nominalBayarCicilan;
-            $('#notaBayar').text(totalUangFisikSah.toLocaleString('id-ID'));
+            $('#notaBayar').text(payload.bayar.toLocaleString('id-ID'));
             
             $('#areaNota').removeClass('d-none');
             $('#notaKosongMsg').addClass('d-none');
-            $('#btnPrintStruk').attr("onclick", "cetakNotaSaja()");
           } else {
-            // Jika transaksi murni UTANG tanpa uang muka, hilangkan pratinjau nota sah
             $('#areaNota').addClass('d-none');
             $('#notaKosongMsg').removeClass('d-none');
           }
           
-          // Reset Input form belanjaan
           $('#selBarang').val(null).trigger('change');
           $('#numBayar').val(0);
-          
-          // Refresh tabel rekap riwayat & saldo berjalan
           muatRiwayatDanSaldo();
-        } else {
-          alert("Error: " + res.message);
         }
       });
   }
@@ -413,36 +395,126 @@
     window.print();
   }
 
-  function cetakLaporanRiwayat() {
+  function cetakLaporanRiwayatFormatGambar() {
     let nama = $('#selPelanggan').val();
     let grup = $('#selGrup').val();
-    let saldo = $('#lblSaldoUtang').text();
-    let tglM = $('#filterTglMulai').val().split('-').reverse().join('/');
-    let tglA = $('#filterTglAkhir').val().split('-').reverse().join('/');
-    let tabelHtml = $('.table-riwayat').parent().html();
+    let tglMulai = $('#filterTglMulai').val().split('-').reverse().join('/');
+    let tglAkhir = $('#filterTglAkhir').val().split('-').reverse().join('/');
     
-    let template = `
-      <div style="padding:30px; font-family:Arial, sans-serif;">
-        <h3 class="text-center fw-bold mb-1">REKAPAN RIWAYAT PIUTANG</h3>
-        <h5 class="text-center text-muted mb-2">WARUNG BUNDA CINTA</h5>
-        <p class="text-center small">Periode Laporan: <b>${tglM} s/d ${tglA}</b></p>
-        <hr style="border-top:2px solid #000; margin-bottom:20px;">
-        <table class="table table-sm w-50 mb-4">
-          <tr><td><b>Nama Pelanggan</b></td><td>: ${nama} (${grup})</td></tr>
-          <tr><td><b>Sisa Saldo Utang Akhir</b></td><td>: <b class="text-danger">Rp ${saldo}</b></td></tr>
-          <tr><td><b>Tanggal Cetak</b></td><td>: ${new Date().toLocaleDateString('id-ID')}</td></tr>
+    // Logika Mengisolasi Satu Bank yang Dipilih Kasir di Dropdown
+    let indexBankTerpilih = $('#selBankNota').val();
+    let infoBank = masterData.pengaturan[indexBankTerpilih] || { namaBank: "-", noRek: "-", atasNama: "-", urlQris: "" };
+    
+    let rowsHtml = "";
+    let totalAkumulasiTransaksi = 0;
+    let index = 1;
+
+    riwayatLengkapDiterima.forEach(item => {
+      if(item.utang > 0) {
+        totalAkumulasiTransaksi += item.utang;
+        rowsHtml += `
+          <tr>
+            <td style="text-align:center;">${index++}</td>
+            <td style="text-align:center;">${item.tanggal}</td>
+            <td>${item.keterangan}</td>
+            <td style="text-align:center;">1</td>
+            <td style="text-align:center;">Paket</td>
+            <td style="text-align:right;">Rp ${parseInt(item.utang).toLocaleString('id-ID')}</td>
+            <td style="text-align:right;">Rp ${parseInt(item.utang).toLocaleString('id-ID')}</td>
+          </tr>
+        `;
+      }
+    });
+
+    let terbilangKata = angkaKeTerbilang(totalAkumulasiTransaksi) + " Rupiah";
+
+    let qrisKomponen = infoBank.urlQris 
+      ? `<img src="${infoBank.urlQris}" style="max-width:100px; max-height:100px; object-fit:contain; border:1px solid #ccc; padding:2px;">`
+      : `<span style="border:1px solid #000; padding:10px; display:inline-block; background:#fff; font-weight:bold;">QRIS</span>`;
+
+    let templateDokumen = `
+      <div class="cetak-dokumen-rekap">
+        <table style="width:100%; font-size:0.9rem; font-weight:bold;">
+          <tr>
+            <td>Periode Tgl. ${tglMulai} - ${tglAkhir}</td>
+            <td style="text-align:right;">Batam, ${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="text-align:right;">Nama Pelanggan: ${nama} (${grup})</td>
+          </tr>
         </table>
-        ${tabelHtml}
-        <div style="margin-top:60px;" class="text-end">
-          <p>Batam, ${new Date().toLocaleDateString('id-ID')}</p>
-          <br><br><br>
-          <p><b>( Warung Bunda Cinta )</b></p>
+        
+        <div style="font-weight:bold; margin-top:15px; font-size:1rem; border-bottom:3px double #000; padding-bottom:3px; width:fit-content;">
+          NOTA NO. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WARUNG BUNDA CINTA
         </div>
+
+        <table class="table-dokumen">
+          <thead>
+            <tr>
+              <th style="width:5%;">No</th>
+              <th style="width:12%;">Tanggal</th>
+              <th style="width:38%;">Keterangan</th>
+              <th style="width:10%;">Banyak</th>
+              <th style="width:10%;">Satuan</th>
+              <th style="width:12%;">Harga Satuan</th>
+              <th style="width:13%;">Jumlah</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml ? rowsHtml : '<tr><td colspan="7" style="text-align:center;">Tidak ada rincian data transaksi utang pada periode ini.</td></tr>'}
+            <tr class="total-row">
+              <td colspan="3" style="text-align:center;">TOTAL</td>
+              <td style="text-align:center;">${index - 1} Item</td>
+              <td colspan="2" style="text-align:right;">Total Transaksi</td>
+              <td style="text-align:right;">Rp ${totalAkumulasiTransaksi.toLocaleString('id-ID')}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table style="width:100%; margin-top:10px; font-size:0.85rem; border:1px solid #000; background-color:#f9f9f9;">
+          <tr>
+            <td style="width:55%; padding:10px; vertical-align:top; border-right:1px solid #000;">
+              <i>Terbilang :</i>
+              <b style="font-style:italic; display:block; margin-top:2px; margin-bottom:10px; color:#c0392b;">"${terbilangKata}"</b>
+              <div style="border-top:1px dashed #ccc; padding-top:5px; font-size:0.8rem;">
+                <b>Transfer Bank :</b><br>
+                Nama Bank: ${infoBank.namaBank}<br>
+                No. Rekening: <span style="font-family:monospace; font-weight:bold;">${infoBank.noRek}</span><br>
+                Atas Nama: <b>${infoBank.atasNama}</b>
+              </div>
+            </td>
+            <td style="width:45%; padding:10px; vertical-align:middle; text-align:center;">
+              <span style="font-size:0.75rem; font-weight:bold; display:block; margin-bottom:5px;">Pembayaran Dapat Melalui QRIS:</span>
+              ${qrisKomponen}
+            </td>
+          </tr>
+        </table>
+
+        <table style="width:100%; margin-top:40px; text-align:center; font-size:0.9rem;">
+          <tr>
+            <td style="width:50%;">Tanda Terima<br><br><br><br>(................................................)</td>
+            <td style="width:50%;">Hormat Kami,<br><br><br><br>(................................................)<br><b>Warung Bunda Cinta</b></td>
+          </tr>
+        </table>
       </div>
     `;
-    
-    $('#areaCetakFormat').html(template);
+
+    $('#areaCetakFormat').html(templateDokumen);
     window.print();
+  }
+
+  function angkaKeTerbilang(n) {
+    let ambil = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+    if (n < 12) return ambil[n];
+    else if (n < 20) return angkaKeTerbilang(n - 10) + " Belas";
+    else if (n < 100) return angkaKeTerbilang(Math.floor(n / 10)) + " Puluh " + angkaKeTerbilang(n % 10);
+    else if (n < 200) return "Seratus " + angkaKeTerbilang(n - 100);
+    else if (n < 1000) return angkaKeTerbilang(Math.floor(n / 100)) + " Ratus " + angkaKeTerbilang(n % 100);
+    else if (n < 2000) return "Seribu " + angkaKeTerbilang(n - 1000);
+    else if (n < 1000000) return angkaKeTerbilang(Math.floor(n / 1000)) + " Ribu " + angkaKeTerbilang(n % 1000);
+    else if (n < 1000000000) return angkaKeTerbilang(Math.floor(n / 1000000)) + " Juta " + angkaKeTerbilang(n % 1000000);
+    return "";
   }
 </script>
 </body>
